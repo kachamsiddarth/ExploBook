@@ -1,0 +1,20 @@
+@tailwindcss base;
+@tailwindcss components;
+@tailwindcss utilities;
+
+:root {
+  --paper: #F3EED7;
+  --ink: #292728;
+  --muted: #777164;
+  --accent: #B6A46A;
+  --paper-2: #E9E2C7;
+  --white: #FFFDF5;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+}

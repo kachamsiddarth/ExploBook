@@ -33,4 +33,6 @@ export * from './user.js';
 export * from './reader.js';
 export * from './book.js';
 export * from './recommendation.js';
-
+export * from './session.js';
+export * from './expedition.js';
+export * from './orb.js';

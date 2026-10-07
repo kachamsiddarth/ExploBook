@@ -29,6 +29,7 @@ export class EmbeddingService {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(3000),
         body: JSON.stringify({
           model: this.model,
           prompt: text.trim(),

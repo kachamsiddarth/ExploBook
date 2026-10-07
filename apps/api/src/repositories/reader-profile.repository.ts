@@ -91,6 +91,67 @@ export class ReaderProfileRepository {
     return result;
   }
 
+  async addStatsAndXP(
+    userId: string | ObjectId,
+    delta: {
+      xpGained?: number;
+      booksCompleted?: number;
+      readingSeconds?: number;
+      outdoorSeconds?: number;
+      newLevel?: number;
+    }
+  ): Promise<ReaderProfileDoc | null> {
+    const collection = await this.getCollection();
+    const objId = typeof userId === 'string' ? new ObjectId(userId) : userId;
+
+    const incQuery: Record<string, number> = {};
+    if (delta.xpGained) incQuery['stats.xp'] = delta.xpGained;
+    if (delta.booksCompleted) incQuery['stats.booksCompleted'] = delta.booksCompleted;
+    if (delta.readingSeconds) incQuery['stats.totalReadingSeconds'] = delta.readingSeconds;
+    if (delta.outdoorSeconds) incQuery['stats.totalOutdoorSeconds'] = delta.outdoorSeconds;
+
+    const setQuery: Record<string, any> = { updatedAt: new Date() };
+    if (delta.newLevel !== undefined) {
+      setQuery['stats.level'] = delta.newLevel;
+    }
+
+    const updateDoc: Record<string, any> = { $set: setQuery };
+    if (Object.keys(incQuery).length > 0) {
+      updateDoc.$inc = incQuery;
+    }
+
+    return collection.findOneAndUpdate(
+      { userId: objId },
+      updateDoc,
+      { returnDocument: 'after' }
+    );
+  }
+
+  async updateDNA(
+    userId: string | ObjectId,
+    delta: Partial<ReaderDNA['explorationProfile']>
+  ): Promise<ReaderProfileDoc | null> {
+    const profile = await this.findByUserId(userId);
+    if (!profile) return null;
+
+    const exp = { ...profile.dna.explorationProfile };
+    for (const [key, val] of Object.entries(delta)) {
+      if (typeof val === 'number' && key in exp) {
+        const currentVal = (exp as any)[key] ?? 0.5;
+        // Clamp bounded affinities between 0 and 1
+        (exp as any)[key] = Math.max(0, Math.min(1, Number((currentVal + val).toFixed(2))));
+      }
+    }
+
+    return this.update(userId, {
+      dna: {
+        ...profile.dna,
+        explorationProfile: exp,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
   async ensureIndexes(): Promise<void> {
     const collection = await this.getCollection();
     await collection.createIndex({ userId: 1 }, { unique: true });

@@ -37,6 +37,10 @@ describe('Phase 3 - Recommendations & Vector Retrieval Tests', () => {
 
       // Mock missing embeddings to return empty
       vi.spyOn(bookRepository, 'findMissingEmbeddings').mockResolvedValue([]);
+      vi.spyOn(embeddingService, 'generateEmbedding').mockResolvedValue({
+        embedding: new Array(768).fill(0.05),
+        model: 'nomic-embed-text',
+      });
 
       // Mock gemmaService to return grounded fallback instantly
       vi.spyOn(gemmaService, 'generateGroundedReasoning').mockResolvedValue({

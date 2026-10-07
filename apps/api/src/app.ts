@@ -6,6 +6,7 @@ import healthRouter from './routes/health.routes.js';
 import v1Router from './routes/v1.routes.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { clerkAuthMiddleware } from './middleware/auth.middleware.js';
 
 export const app = express();
 
@@ -20,6 +21,9 @@ app.use(
 
 // Standard body parser with safe payload size limit
 app.use(express.json({ limit: '1mb' }));
+
+// Clerk session authentication parsing
+app.use(clerkAuthMiddleware());
 
 // Routes
 app.use('/health', healthRouter);

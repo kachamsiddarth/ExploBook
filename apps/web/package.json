@@ -11,6 +11,7 @@
     "test": "echo \"No frontend unit tests in Phase 1\""
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.11",
     "@explobook/shared": "workspace:*",
     "@explobook/ui": "workspace:*",
     "next": "15.2.0",

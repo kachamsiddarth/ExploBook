@@ -18,8 +18,8 @@ app.use(
   })
 );
 
-// Standard body parser
-app.use(express.json());
+// Standard body parser with safe payload size limit
+app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use('/health', healthRouter);

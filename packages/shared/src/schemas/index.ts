@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const EntityIdSchema = z.string().min(1);
+export type EntityId = z.infer<typeof EntityIdSchema>;
+
 export const HealthCheckResponseSchema = z.object({
   status: z.literal('ok'),
   service: z.string(),
@@ -9,6 +12,7 @@ export const HealthCheckResponseSchema = z.object({
 export type HealthCheckResponse = z.infer<typeof HealthCheckResponseSchema>;
 
 export const ApiErrorResponseSchema = z.object({
+  success: z.literal(false).optional(),
   error: z.object({
     code: z.string(),
     message: z.string(),
@@ -18,3 +22,9 @@ export const ApiErrorResponseSchema = z.object({
 });
 
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
+
+export const ApiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    success: z.literal(true),
+    data: dataSchema,
+  });

@@ -1,29 +1,32 @@
-# ExploBook — Phase 1: Project Foundation Completion Report
+# ExploBook — Phase 1: Project Foundation Finalization Report
 
-> **Document Version:** 1.0.0  
-> **Date:** October 6, 2026  
-> **Status:** Complete  
+> **Document Version:** 1.1.0  
+> **Date:** October 7, 2026  
+> **Status:** Complete & Hardened  
 > **Target Path:** `docs/PHASE-1-FOUNDATION.md`
 
 ---
 
-## 1. What Was Implemented
+## 1. What Was Implemented & Hardened
 
-Phase 1 establishes the clean, typed, modular monorepo foundation for **ExploBook** using `pnpm` workspaces:
+Phase 1 establishes and finalizes the clean, typed, modular monorepo foundation for **ExploBook** using `pnpm` workspaces:
 
 - **Monorepo Setup:** Configured workspace root with pnpm 12.9.1, ES2022 TypeScript configuration, `.gitignore`, and environment configuration templates (`.env.example`).
 - **Frontend App (`apps/web`):** Minimal Next.js 15+ App Router shell with React 19, Tailwind CSS, TypeScript, and editorial theme color tokens (`--paper: #F3EED7`, `--ink: #292728`, `--accent: #B6A46A`).
-- **Backend API Server (`apps/api`):** Express + TypeScript REST API foundation with security middleware (`helmet`, `cors`), centralized 404/500 error handlers, environment configuration module (`src/config/index.ts`), API versioning (`/api/v1`), and a healthy `/health` status endpoint returning `{"status":"ok","service":"explobook-api"}`.
-- **Shared Package (`packages/shared`):** Typescript/Zod schema package exported to both web and API containing application constants, Zod validation schemas (`HealthCheckResponseSchema`, `ApiErrorResponseSchema`), and shared interfaces.
-- **UI Package (`packages/ui`):** Monorepo package scaffolded as the foundation for future shared design system primitives.
-- **Test Infrastructure:** Vitest test suite covering shared Zod schema validation and API health endpoint HTTP contract tests.
+- **Backend API Server (`apps/api`):** Express + TypeScript REST API foundation with security middleware (`helmet`, `cors`), 1MB JSON body parser limit, centralized error handling with production redaction, 404 handler returning consistent `{ success: false, error: { code, message } }`, environment configuration module (`src/config/index.ts`), API versioning (`/api/v1`), and a healthy `/health` status endpoint returning `{"status":"ok","service":"explobook-api","timestamp":"..."}`.
+- **Shared Package (`packages/shared`):** Typescript/Zod schema package exported to both web and API containing application constants, Zod validation schemas (`EntityIdSchema`, `HealthCheckResponseSchema`, `ApiErrorResponseSchema`, `ApiSuccessResponseSchema`), and shared interfaces.
+- **UI Package (`packages/ui`):** Monorepo package scaffolded and compiled cleanly as the foundation for future shared design system primitives.
+- **Environment & Config Alignment:**
+  - `GEMMA_MODEL` default set to target architecture `gemma3:4b-it-q4_K_M` across typed config and `.env.example`.
+  - Added `ELEVENLABS_EXPEDITION_VOICE_ID` to typed config and `.env.example`.
+- **Test Infrastructure:** Vitest test suite covering shared Zod schema validation, API health endpoint, and API 404 contract tests (8 tests passing across 2 test suites).
 
 ---
 
 ## 2. Repository Structure
 
 ```text
-exploBook/
+ExploBook/
 ├── apps/
 │   ├── web/                     # Next.js 15 App Router Frontend
 │   │   ├── app/
@@ -37,7 +40,7 @@ exploBook/
 │   └── api/                     # Express REST API Server
 │       ├── src/
 │       │   ├── config/          # Environment configuration module
-│       │   ├── middleware/      # Error & 404 middleware
+│       │   ├── middleware/      # Hardened error & 404 middleware
 │       │   ├── routes/          # /health & /api/v1 router
 │       │   ├── app.ts           # Express application setup
 │       │   └── server.ts        # Executable server entrypoint
@@ -57,9 +60,11 @@ exploBook/
 │       │   └── index.ts
 │       └── tsconfig.json
 │
-├── docs/                        # Specifications & Phase Audit Reports
+├── docs/                        # Specifications, Memory & Phase Reports
+│   ├── AI-MEMORY.md             # Canonical project memory file
 │   ├── PHASE-0-AUDIT.md
-│   └── PHASE-1-FOUNDATION.md
+│   ├── PHASE-1-FOUNDATION.md
+│   └── 27-REAL-WORLD-EXPEDITIONS.md
 │
 ├── .env.example                 # Environment variables blueprint
 ├── .gitignore                   # Git ignore patterns
@@ -137,22 +142,28 @@ All third-party credentials (Clerk, MongoDB Atlas, Ollama/Gemma, ElevenLabs, Ser
    - `should export application constants correctly` (PASS)
    - `should validate HealthCheckResponseSchema with Zod` (PASS)
    - `should reject invalid health check responses` (PASS)
+   - `should validate ApiErrorResponseSchema with Zod` (PASS)
+   - `should validate EntityIdSchema with Zod` (PASS)
 2. `apps/api/src/__tests__/health.test.ts`:
    - `GET /health should return 200 status with valid health response structure` (PASS)
    - `GET /unknown-route should return 404 for unknown endpoints with error payload` (PASS)
+   - `GET /api/v1/status should return 200 for /api/v1/status` (PASS)
 
 ### Verification Summary
 - `pnpm build`: **PASS** (all packages compiled, Next.js static pages generated)
 - `pnpm typecheck`: **PASS** (0 errors)
 - `pnpm lint`: **PASS** (0 warnings, 0 errors)
-- `pnpm test`: **PASS** (5 tests passing in 2 test suites)
+- `pnpm test`: **PASS** (8 tests passing in 2 test suites)
+- Smoke Test `/health`: **PASS** (200 OK)
+- Smoke Test `/api/v1/status`: **PASS** (200 OK)
+- Smoke Test 404 handling: **PASS** (404 Not Found with structured error payload)
 
 ---
 
-## 7. Known Limitations
+## 7. Known Limitations & Deferred Work
 
 - The UI is a minimal placeholder foundation and does not yet implement ExploBook design pages (Landing, Onboarding, Recommendation, Grass Mode, Reflection).
-- No database persistence layer is connected (MongoDB Atlas will be added in Phase 3).
+- No database persistence layer is connected (MongoDB Atlas will be added in Phase 2).
 - No authentication middleware is active (Clerk integration will occur in Phase 2).
 
 ---
@@ -162,17 +173,18 @@ All third-party credentials (Clerk, MongoDB Atlas, Ollama/Gemma, ElevenLabs, Ser
 The following systems were **EXPLICITLY NOT IMPLEMENTED** in Phase 1 and remain reserved for their respective phases:
 
 - [x] NO Clerk authentication or user sign-in flows (Phase 2)
-- [x] NO MongoDB database connections or schemas (Phase 3)
-- [x] NO Ollama or Gemma AI model adapters (Phase 4)
-- [x] NO Mastra agents, tools, or workflows (Phase 5)
-- [x] NO recommendation scoring engine (Phase 6)
-- [x] NO Vector Search indexing (Phase 7)
-- [x] NO reading session timers or Grass Mode UI (Phase 8)
-- [x] NO XP, level curves, or Orb procedural generation (Phase 9)
-- [x] NO ElevenLabs text-to-speech audio generation (Phase 10)
-- [x] NO SerpApi external discovery links (Phase 12)
-- [x] NO Sentry error tracing (Phase 13)
+- [x] NO MongoDB database connections, models, or repositories (Phase 2)
+- [x] NO Book catalogue ingestion or retrieval (Phase 2)
+- [x] NO Ollama or Gemma AI model adapters (Phase 3)
+- [x] NO Mastra agents, tools, or workflows (Phase 3)
+- [x] NO recommendation scoring engine or vector search (Phase 3)
+- [x] NO reading session timers, Grass Mode UI, or real-world Expeditions (Phase 4)
+- [x] NO XP, level curves, or Orb procedural generation (Phase 4)
+- [x] NO ElevenLabs text-to-speech audio generation (Phase 5)
+- [x] NO SerpApi external discovery links (Phase 5)
+- [x] NO Sentry error tracing (Phase 6)
+- [x] NO cloud deployments (Phase 7)
 
 ---
 
-*Phase 1 Foundation complete. The monorepo is fully buildable, typed, and ready for Phase 2 (Authentication + User Profile).*
+*Phase 1 Foundation finalization complete. The monorepo is fully buildable, typed, tested, and ready for Phase 2 (Clerk + MongoDB + Book Catalogue).*

@@ -16,7 +16,16 @@ describe('GET /health', () => {
     const response = await request(app).get('/unknown-route');
 
     expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty('success', false);
     expect(response.body).toHaveProperty('error');
     expect(response.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('should return 200 for /api/v1/status', async () => {
+    const response = await request(app).get('/api/v1/status');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('status', 'ok');
+    expect(response.body).toHaveProperty('version', 'v1');
   });
 });

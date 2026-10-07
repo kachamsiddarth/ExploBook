@@ -25,6 +25,7 @@ export interface ApiConfig {
   elevenlabs?: {
     apiKey?: string;
     recommendationVoiceId?: string;
+    expeditionVoiceId?: string;
     orbVoiceId?: string;
     modelId?: string;
   };
@@ -52,12 +53,13 @@ export const config: ApiConfig = {
   },
   ollama: {
     baseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
-    gemmaModel: process.env.GEMMA_MODEL || 'gemma3:1b-it-q4_K_M',
+    gemmaModel: process.env.GEMMA_MODEL || 'gemma3:4b-it-q4_K_M',
     embeddingModel: process.env.EMBEDDING_MODEL || 'nomic-embed-text',
   },
   elevenlabs: {
     apiKey: process.env.ELEVENLABS_API_KEY,
     recommendationVoiceId: process.env.ELEVENLABS_RECOMMENDATION_VOICE_ID,
+    expeditionVoiceId: process.env.ELEVENLABS_EXPEDITION_VOICE_ID,
     orbVoiceId: process.env.ELEVENLABS_ORB_VOICE_ID,
     modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
   },

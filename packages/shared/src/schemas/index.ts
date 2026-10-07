@@ -32,4 +32,5 @@ export const ApiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) 
 export * from './user.js';
 export * from './reader.js';
 export * from './book.js';
+export * from './recommendation.js';
 

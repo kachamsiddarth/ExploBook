@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "@clerk/express": "^2.1.76",
+    "@elevenlabs/elevenlabs-js": "^2.71.0",
     "@explobook/shared": "workspace:*",
     "@mastra/core": "^1.74.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "google-search-results-nodejs": "^2.1.0",
     "helmet": "^8.0.0",
     "mongodb": "^7.7.0",
     "zod": "^4.6.5"

@@ -13,6 +13,14 @@ interface Book {
   description: string;
 }
 
+interface ExpeditionPlace {
+  name: string;
+  category?: string;
+  address?: string;
+  rating?: number;
+  mapsUrl?: string;
+}
+
 interface Expedition {
   id: string;
   type: string;
@@ -22,6 +30,14 @@ interface Expedition {
   instructions: string[];
   bookConnection: string;
   status: string;
+  place?: ExpeditionPlace;
+}
+
+interface VoiceBriefing {
+  audioBase64: string;
+  contentType: string;
+  script: string;
+  cacheHit: boolean;
 }
 
 interface Orb {
@@ -56,6 +72,9 @@ export default function HomePage() {
   const [earnedOrb, setEarnedOrb] = useState<Orb | null>(null);
   const [xpGained, setXpGained] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [voiceBriefing, setVoiceBriefing] = useState<VoiceBriefing | null>(null);
+  const [isLoadingVoice, setIsLoadingVoice] = useState(false);
+  const [locationGranted, setLocationGranted] = useState<boolean | null>(null);
 
   // 1. Complete reading & generate expedition
   const handleCompleteReading = () => {
@@ -80,6 +99,46 @@ export default function HomePage() {
       setIsGenerating(false);
       setActiveStep('EXPEDITION_READY');
     }, 600);
+  };
+
+  // 1b. Request location for SerpApi place discovery (optional)
+  const handleRequestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationGranted(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      () => setLocationGranted(true),
+      () => setLocationGranted(false),
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  };
+
+  // 1c. Load expedition voice briefing from ElevenLabs
+  const handleLoadVoiceBriefing = async () => {
+    if (!expedition) return;
+    setIsLoadingVoice(true);
+    try {
+      const res = await fetch(`/api/v1/expeditions/${expedition.id}/voice`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const json = await res.json() as { success: boolean; data: VoiceBriefing };
+        if (json.success) setVoiceBriefing(json.data);
+      }
+    } catch {
+      // Voice unavailable — not fatal
+    } finally {
+      setIsLoadingVoice(false);
+    }
+  };
+
+  // Play base64 audio briefing
+  const handlePlayBriefing = () => {
+    if (!voiceBriefing) return;
+    const audio = new Audio(`data:${voiceBriefing.contentType};base64,${voiceBriefing.audioBase64}`);
+    audio.play().catch(() => {});
   };
 
   // 2. Start Grass Mode
@@ -205,17 +264,48 @@ export default function HomePage() {
           <div className="border border-[#B6A46A]/30 p-8 rounded-xl bg-[#FFFDF5] shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="px-3 py-1 bg-[#E9E2C7] border border-[#B6A46A]/20 rounded text-xs font-mono uppercase">
-                {expedition.type} MISSION · {expedition.durationMinutes} MIN
+                {expedition.type} MISSION &middot; {expedition.durationMinutes} MIN
               </span>
               <span className="text-xs text-[#777164] font-mono">Screen Departure Imminent</span>
             </div>
 
             <h2 className="text-3xl font-serif font-bold mb-3">{expedition.title}</h2>
-            <p className="text-sm text-[#454240] leading-relaxed mb-6 font-medium italic">
+            <p className="text-sm text-[#454240] leading-relaxed mb-4 font-medium italic">
               &ldquo;{expedition.objective}&rdquo;
             </p>
 
-            <div className="bg-[#F3EED7]/70 border border-[#B6A46A]/20 p-5 rounded-lg mb-6">
+            {/* SerpApi place card — shown if API returned a real place */}
+            {expedition.place && (
+              <div className="mb-5 p-4 bg-[#F3EED7] border border-[#B6A46A]/30 rounded-lg flex items-start gap-3">
+                <span className="text-2xl mt-0.5">📍</span>
+                <div className="text-sm">
+                  <div className="font-semibold text-[#292728]">{expedition.place.name}</div>
+                  {expedition.place.category && (
+                    <div className="text-xs text-[#777164] font-mono">{expedition.place.category}</div>
+                  )}
+                  {expedition.place.address && (
+                    <div className="text-xs text-[#454240] mt-1">{expedition.place.address}</div>
+                  )}
+                  {expedition.place.rating && (
+                    <div className="text-xs text-[#B6A46A] mt-0.5">
+                      {'★'.repeat(Math.round(expedition.place.rating))} {expedition.place.rating.toFixed(1)}
+                    </div>
+                  )}
+                  {expedition.place.mapsUrl && (
+                    <a
+                      href={expedition.place.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#4a7c59] hover:underline mt-1 inline-block"
+                    >
+                      View on Maps &rarr;
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-[#F3EED7]/70 border border-[#B6A46A]/20 p-5 rounded-lg mb-5">
               <h3 className="text-xs font-mono uppercase tracking-wider text-[#777164] mb-3">
                 Mission Instructions
               </h3>
@@ -229,15 +319,65 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <p className="text-xs text-[#777164] leading-relaxed mb-6 border-l-2 border-[#B6A46A] pl-3 italic">
+            <p className="text-xs text-[#777164] leading-relaxed mb-5 border-l-2 border-[#B6A46A] pl-3 italic">
               {expedition.bookConnection}
             </p>
+
+            {/* ElevenLabs Voice Briefing */}
+            <div className="mb-5 p-4 bg-[#292728]/5 border border-[#B6A46A]/20 rounded-lg">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#777164] mb-2">
+                🎙 Expedition Voice Briefing
+              </div>
+              {!voiceBriefing ? (
+                <button
+                  onClick={handleLoadVoiceBriefing}
+                  disabled={isLoadingVoice}
+                  className="text-xs font-mono text-[#4a7c59] hover:text-[#3d6849] disabled:opacity-50 transition-colors"
+                >
+                  {isLoadingVoice ? 'Loading audio...' : 'Load briefing audio (ElevenLabs)'}
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handlePlayBriefing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#292728] text-[#F3EED7] rounded text-xs font-mono hover:bg-[#3D3A3B] transition-colors"
+                  >
+                    ▶ Play Briefing
+                  </button>
+                  <span className="text-xs text-[#777164]">
+                    {voiceBriefing.cacheHit ? 'Cached' : 'Generated'} &middot; Ready to hear
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Optional location for SerpApi */}
+            {locationGranted === null && (
+              <div className="mb-4 text-center">
+                <button
+                  onClick={handleRequestLocation}
+                  className="text-xs font-mono text-[#777164] hover:text-[#454240] underline-offset-2 hover:underline transition-colors"
+                >
+                  📍 Optional: share location to discover nearby places
+                </button>
+              </div>
+            )}
+            {locationGranted === true && (
+              <div className="mb-4 text-center text-xs font-mono text-[#4a7c59]">
+                ✓ Location shared &mdash; real places will be suggested next time
+              </div>
+            )}
+            {locationGranted === false && (
+              <div className="mb-4 text-center text-xs font-mono text-[#777164]">
+                Location skipped &mdash; a generic expedition will be generated
+              </div>
+            )}
 
             <button
               onClick={handleStartGrassMode}
               className="w-full py-3.5 bg-[#292728] text-[#F3EED7] font-medium rounded-lg hover:bg-[#3D3A3B] transition-colors shadow-md text-sm flex items-center justify-center gap-2"
             >
-              🌿 I&apos;m Putting My Phone Away · Start Expedition
+              🌿 I&apos;m Putting My Phone Away &middot; Start Expedition
             </button>
           </div>
         )}
@@ -364,11 +504,13 @@ export default function HomePage() {
       <footer className="w-full max-w-3xl pt-6 border-t border-[#B6A46A]/20 text-center">
         <div className="flex flex-wrap justify-center gap-4 text-xs font-mono text-[#777164]">
           <span>Gemma 3 4B Grounded</span>
-          <span>•</span>
+          <span>&bull;</span>
           <span>Mastra Orchestration</span>
-          <span>•</span>
-          <span>Real-World Expeditions</span>
-          <span>•</span>
+          <span>&bull;</span>
+          <span>SerpApi Places</span>
+          <span>&bull;</span>
+          <span>ElevenLabs Voice</span>
+          <span>&bull;</span>
           <span>Deterministic XP &amp; Orbs</span>
         </div>
       </footer>

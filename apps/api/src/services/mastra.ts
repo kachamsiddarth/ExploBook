@@ -5,6 +5,7 @@ import { recommendationOrchestrator, type GetRecommendationsOptions } from './re
 import { expeditionService } from './expedition.service.js';
 import { reflectionService } from './reflection.service.js';
 import { progressionService } from './progression.service.js';
+import { serpApiService, EXPEDITION_TYPE_TO_QUERY } from './serpapi.service.js';
 import { bookRepository } from '../repositories/book.repository.js';
 import { readerProfileRepository } from '../repositories/reader-profile.repository.js';
 import { expeditionRepository } from '../repositories/expedition.repository.js';
@@ -62,6 +63,10 @@ const expeditionGenerationWorkflowStep = (createStep as any)({
     readingSessionId: z.string().optional(),
     availableMinutes: z.number().optional(),
     preferredType: z.string().optional(),
+    location: z.object({
+      latitude: z.number(),
+      longitude: z.number(),
+    }).optional(),
   }),
   outputSchema: ExpeditionSchema,
   execute: async (params: any) => {
@@ -81,12 +86,34 @@ const expeditionGenerationWorkflowStep = (createStep as any)({
 
     const readerProfile = await readerProfileRepository.findByUserId(input.userId);
 
+    // SerpApi place discovery when location is provided
+    let nearbyPlace: import('@explobook/shared').ExpeditionPlace | undefined;
+    if (input.location?.latitude !== undefined && input.location?.longitude !== undefined) {
+      const expeditionType = (input.preferredType as string | undefined) ?? 'DISCOVERY';
+      const placeQuery = EXPEDITION_TYPE_TO_QUERY[expeditionType] ?? 'parks near me';
+
+      const candidates = await serpApiService.searchNearbyPlaces({
+        latitude: input.location.latitude,
+        longitude: input.location.longitude,
+        query: placeQuery,
+      });
+
+      if (candidates.length > 0) {
+        // Use the first (highest-ranked) SerpApi candidate
+        nearbyPlace = candidates[0];
+        console.info(`[Mastra/Expedition]: SerpApi found ${candidates.length} place(s). Using: ${nearbyPlace.name}`);
+      } else {
+        console.info('[Mastra/Expedition]: SerpApi returned no candidates. Generating generic expedition.');
+      }
+    }
+
     const concept = await expeditionService.generateExpeditionConcept(
       book,
       readerProfile || undefined,
       {
         availableMinutes: input.availableMinutes,
         preferredType: input.preferredType as ExpeditionType | undefined,
+        nearbyPlace,
       }
     );
 
@@ -100,6 +127,7 @@ const expeditionGenerationWorkflowStep = (createStep as any)({
       objective: concept.objective,
       instructions: concept.instructions,
       bookConnection: concept.bookConnection,
+      place: nearbyPlace,
     });
 
     return expeditionRepository.toDomain(expeditionDoc);
@@ -108,13 +136,17 @@ const expeditionGenerationWorkflowStep = (createStep as any)({
 
 export const expeditionGenerationWorkflow = createWorkflow({
   id: 'expedition-generation-workflow',
-  description: 'Mastra workflow generating a real-world expedition from book themes and reader DNA using Gemma',
+  description: 'Mastra workflow generating a real-world expedition from book themes and reader DNA using Gemma. Optionally discovers nearby places via SerpApi.',
   inputSchema: z.object({
     userId: z.string(),
     bookId: z.string(),
     readingSessionId: z.string().optional(),
     availableMinutes: z.number().optional(),
     preferredType: z.string().optional(),
+    location: z.object({
+      latitude: z.number(),
+      longitude: z.number(),
+    }).optional(),
   }),
   outputSchema: ExpeditionSchema,
 })
@@ -321,6 +353,7 @@ export async function executeExpeditionGenerationWorkflow(input: {
   readingSessionId?: string;
   availableMinutes?: number;
   preferredType?: string;
+  location?: { latitude: number; longitude: number };
 }): Promise<{ result: Expedition; workflowStatus: string }> {
   try {
     const workflow = explobookMastra.getWorkflow('expeditionGenerationWorkflow');
@@ -347,12 +380,27 @@ export async function executeExpeditionGenerationWorkflow(input: {
   if (!book) throw new Error(`Book not found: ${input.bookId}`);
 
   const readerProfile = await readerProfileRepository.findByUserId(input.userId);
+
+  // SerpApi place discovery in fallback path too
+  let nearbyPlace: import('@explobook/shared').ExpeditionPlace | undefined;
+  if (input.location?.latitude !== undefined && input.location?.longitude !== undefined) {
+    const expeditionType = input.preferredType ?? 'DISCOVERY';
+    const placeQuery = EXPEDITION_TYPE_TO_QUERY[expeditionType] ?? 'parks near me';
+    const candidates = await serpApiService.searchNearbyPlaces({
+      latitude: input.location.latitude,
+      longitude: input.location.longitude,
+      query: placeQuery,
+    });
+    if (candidates.length > 0) nearbyPlace = candidates[0];
+  }
+
   const concept = await expeditionService.generateExpeditionConcept(
     book,
     readerProfile || undefined,
     {
       availableMinutes: input.availableMinutes,
       preferredType: input.preferredType as ExpeditionType | undefined,
+      nearbyPlace,
     }
   );
 
@@ -366,6 +414,7 @@ export async function executeExpeditionGenerationWorkflow(input: {
     objective: concept.objective,
     instructions: concept.instructions,
     bookConnection: concept.bookConnection,
+    place: nearbyPlace,
   });
 
   return {

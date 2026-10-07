@@ -6,6 +6,7 @@ import {
   executeExpeditionGenerationWorkflow,
   executeExpeditionCompletionWorkflow,
 } from '../services/mastra.js';
+import { elevenLabsService } from '../services/voice/elevenlabs.service.js';
 import {
   GenerateExpeditionInputSchema,
   SubmitExpeditionReflectionInputSchema,
@@ -30,7 +31,7 @@ expeditionRouter.post('/generate', requireAuth, async (req: Request, res: Respon
       return;
     }
 
-    const { bookId, readingSessionId, availableMinutes, preferredType } = parseResult.data;
+    const { bookId, readingSessionId, availableMinutes, preferredType, location } = parseResult.data;
 
     // Check if user already has an active expedition
     const existingActive = await expeditionRepository.findCurrentByUserId(user._id);
@@ -49,6 +50,7 @@ expeditionRouter.post('/generate', requireAuth, async (req: Request, res: Respon
       readingSessionId,
       availableMinutes,
       preferredType,
+      location,
     });
 
     res.status(201).json({
@@ -230,6 +232,56 @@ expeditionRouter.get('/history', requireAuth, async (req: Request, res: Response
     res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: msg },
+    });
+  }
+});
+
+// 7. POST /api/v1/expeditions/:id/voice - Generate ElevenLabs expedition briefing audio
+expeditionRouter.post('/:id/voice', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const expeditionId = String(req.params.id);
+
+    const expedition = await expeditionRepository.findById(expeditionId);
+    if (!expedition) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'EXPEDITION_NOT_FOUND', message: 'Expedition not found' },
+      });
+      return;
+    }
+
+    if (expedition.userId.toString() !== user._id.toString()) {
+      res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Not authorized for this expedition' },
+      });
+      return;
+    }
+
+    const domain = expeditionRepository.toDomain(expedition);
+    const briefing = await elevenLabsService.generateExpeditionBriefing(domain);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        audioBase64: briefing.audioBase64,
+        contentType: briefing.contentType,
+        script: briefing.script,
+        cacheHit: briefing.cacheHit,
+      },
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // ElevenLabs unavailable (no API key or network error) — return structured error
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'VOICE_UNAVAILABLE',
+        message: msg.includes('ELEVENLABS_API_KEY')
+          ? 'Voice briefing is not configured. Set ELEVENLABS_API_KEY to enable audio expeditions.'
+          : `Voice briefing generation failed: ${msg}`,
+      },
     });
   }
 });

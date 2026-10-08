@@ -278,6 +278,21 @@ export async function getReaderProfile(): Promise<ReaderProfile | null> {
   return res.success ? (res.data ?? null) : null;
 }
 
+export async function updateReaderProfile(data: {
+  genres?: string[];
+  goals?: string[];
+  difficultyPreference?: string;
+  preferredLength?: string;
+  availableMinutesPerSession?: number;
+  explorationProfile?: Partial<ReaderDNA['explorationProfile']>;
+}): Promise<ReaderProfile | null> {
+  const res = await apiFetch<ReaderProfile>('/api/v1/reader/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return res.success ? (res.data ?? null) : null;
+}
+
 // ─── Books ────────────────────────────────────────────────────────────────────
 
 export async function getBooks(limit = 12): Promise<Book[]> {

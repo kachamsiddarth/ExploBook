@@ -32,7 +32,7 @@ readerRouter.get('/profile', requireAuth, async (req, res, next) => {
 readerRouter.put('/profile', requireAuth, async (req, res, next) => {
   try {
     const { user } = req.authContext!;
-    const { genres, goals, difficultyPreference, preferredLength, availableMinutesPerSession } = req.body;
+    const { genres, goals, difficultyPreference, preferredLength, availableMinutesPerSession, dna, explorationProfile } = req.body;
 
     const update: any = {};
     if (Array.isArray(genres)) update.genres = genres;
@@ -40,6 +40,11 @@ readerRouter.put('/profile', requireAuth, async (req, res, next) => {
     if (difficultyPreference) update.difficultyPreference = difficultyPreference;
     if (preferredLength) update.preferredLength = preferredLength;
     if (typeof availableMinutesPerSession === 'number') update.availableMinutesPerSession = availableMinutesPerSession;
+    if (explorationProfile && typeof explorationProfile === 'object') {
+      update['dna.explorationProfile'] = explorationProfile;
+    } else if (dna?.explorationProfile && typeof dna.explorationProfile === 'object') {
+      update['dna.explorationProfile'] = dna.explorationProfile;
+    }
 
     const updatedProfile = await readerProfileRepository.update(user._id!, update);
 

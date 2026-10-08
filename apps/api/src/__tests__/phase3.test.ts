@@ -37,6 +37,7 @@ describe('Phase 3 - Recommendations & Vector Retrieval Tests', () => {
 
       // Mock missing embeddings to return empty
       vi.spyOn(bookRepository, 'findMissingEmbeddings').mockResolvedValue([]);
+      vi.spyOn(bookRepository, 'vectorSearch').mockResolvedValue({ results: [], method: 'in_memory_cosine_fallback' });
       vi.spyOn(embeddingService, 'generateEmbedding').mockResolvedValue({
         embedding: new Array(768).fill(0.05),
         model: 'nomic-embed-text',

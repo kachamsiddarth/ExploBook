@@ -33,4 +33,45 @@ describe('Phase 2 API Integration Tests', () => {
       expect(response.body).toHaveProperty('error');
     });
   });
+  describe('Protected Endpoints - 401 UNAUTHENTICATED when unauthenticated', () => {
+    it('GET /api/v1/dashboard returns 401 without Clerk auth', async () => {
+      const res = await request(app).get('/api/v1/dashboard');
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('GET /api/v1/sessions/history returns 401 without Clerk auth', async () => {
+      const res = await request(app).get('/api/v1/sessions/history');
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('GET /api/v1/expeditions/history returns 401 without Clerk auth', async () => {
+      const res = await request(app).get('/api/v1/expeditions/history');
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('GET /api/v1/orbs returns 401 without Clerk auth', async () => {
+      const res = await request(app).get('/api/v1/orbs');
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('POST /api/v1/recommendations returns 401 without Clerk auth', async () => {
+      const res = await request(app)
+        .post('/api/v1/recommendations')
+        .send({ query: 'nature' });
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('does NOT accept client-provided userId to spoof or bypass authentication', async () => {
+      const res = await request(app)
+        .get('/api/v1/dashboard?userId=spoofed_user_123')
+        .set('x-user-id', 'spoofed_user_123');
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('UNAUTHENTICATED');
+    });
+  });
 });

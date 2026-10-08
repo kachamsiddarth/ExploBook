@@ -102,7 +102,7 @@ describe('Phase 4 - Reading, Real-World Expeditions, XP, & Orbs', () => {
       expect(concept.instructions.length).toBeGreaterThanOrEqual(2);
       expect(concept.instructions[0].toLowerCase()).toMatch(/(pocket|grass|phone)/);
       expect(concept.bookConnection).toBeDefined();
-    }, 15000);
+    }, 40000);
   });
 
   describe('3. Reflection Service Analysis', () => {
@@ -136,7 +136,7 @@ describe('Phase 4 - Reading, Real-World Expeditions, XP, & Orbs', () => {
       expect(analysis.suggestedDnaDelta).toBeDefined();
       expect(analysis).toHaveProperty('orbTitleIdea');
       expect(analysis).toHaveProperty('orbThemeIdea');
-    }, 15000);
+    }, 40000);
   });
 
   describe('4. Full End-to-End Reading to Expedition Loop', () => {

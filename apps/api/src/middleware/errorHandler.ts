@@ -3,7 +3,7 @@ import type { ApiErrorResponse } from '@explobook/shared';
 import { config } from '../config/index.js';
 
 export function errorHandler(
-  err: Error,
+  err: any,
   _req: Request,
   res: Response,
   _next: NextFunction
@@ -11,7 +11,19 @@ export function errorHandler(
   const isProduction = config.env === 'production';
   
   if (!isProduction) {
-    console.error('[API Error]:', err.message);
+    console.error('[API Error]:', err.message || err);
+  }
+
+  if (err.name === 'ZodError') {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request payload parameters',
+        details: err.flatten ? err.flatten() : err.errors,
+      },
+    });
+    return;
   }
 
   const errorPayload: ApiErrorResponse = {

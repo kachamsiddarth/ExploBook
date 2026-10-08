@@ -391,7 +391,7 @@ I'll be here when you return. Now step outside.`.trim();
     console.log(`  Books returned:    ${recResult.recommendations.length}`);
     console.log(`  Top book:          "${top.book?.title ?? '(missing)'}"`);
     console.log(`  Retrieval method:  ${recResult.retrievalMethod}`);
-    console.log(`  Gemma status:      ${top.reasoning?.status ?? '(no status)'}\n`);
+    console.log(`  Gemma status:      ${(top.reasoning as any)?.status ?? '(no status)'}\n`);
 
     results.phase3_regression = 'PASS';
   } catch (err: any) {

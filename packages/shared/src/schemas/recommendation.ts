@@ -5,6 +5,7 @@ export const RecommendationRequestSchema = z.object({
   query: z.string().optional(),
   genre: z.string().optional(),
   limit: z.number().int().min(1).max(10).default(3),
+  excludeBookIds: z.array(z.string()).optional(),
 });
 
 export type RecommendationRequest = z.infer<typeof RecommendationRequestSchema>;

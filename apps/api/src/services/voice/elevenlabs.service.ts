@@ -26,11 +26,11 @@ export class ElevenLabsService {
   private expeditionVoiceId: string;
   private modelId: string;
 
-  constructor() {
-    this.apiKey = config.elevenlabs?.apiKey;
+  constructor(options?: { apiKey?: string | null; expeditionVoiceId?: string; modelId?: string }) {
+    this.apiKey = options?.apiKey === undefined ? config.elevenlabs?.apiKey : (options.apiKey || undefined);
     this.expeditionVoiceId =
-      config.elevenlabs?.expeditionVoiceId || 'pNInz6obpgDQGcFmaJgB'; // Default: "Adam" voice
-    this.modelId = config.elevenlabs?.modelId || 'eleven_multilingual_v2';
+      options?.expeditionVoiceId || config.elevenlabs?.expeditionVoiceId || 'pNInz6obpgDQGcFmaJgB'; // Default: "Adam" voice
+    this.modelId = options?.modelId || config.elevenlabs?.modelId || 'eleven_multilingual_v2';
   }
 
   /**

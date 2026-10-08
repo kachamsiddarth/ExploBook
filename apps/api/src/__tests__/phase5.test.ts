@@ -37,7 +37,7 @@ describe('SerpApiService', () => {
     const { SerpApiService } = await import('../services/serpapi.service.js');
 
     it('returns empty array when SERPAPI_KEY is not configured', async () => {
-      const service = new SerpApiService();
+      const service = new SerpApiService(null);
       // No API key set — should return empty, not throw
       const results = await service.searchNearbyPlaces({
         latitude: 17.4,
@@ -119,14 +119,9 @@ describe('ElevenLabsService — Script Builder', () => {
 
   it('ElevenLabsService construction reflects missing API key configuration', async () => {
     const { ElevenLabsService } = await import('../services/voice/elevenlabs.service.js');
-    const svc = new ElevenLabsService();
-    // When ELEVENLABS_API_KEY is absent, the service correctly has no key
-    // The error would be thrown during synthesis (after cache miss)
-    // This confirms the service does not silently ignore the missing key config
+    const svc = new ElevenLabsService({ apiKey: null });
     expect(svc).toBeDefined();
-    // Access the private-ish indicator that no API key is configured
     const svcAny = svc as any;
-    // apiKey should be undefined when env var is not set in test environment
     expect(svcAny.apiKey).toBeUndefined();
   });
 });

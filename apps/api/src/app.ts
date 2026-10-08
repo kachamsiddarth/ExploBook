@@ -1,3 +1,4 @@
+import './services/sentry.service.js'; // Initialize Sentry first
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

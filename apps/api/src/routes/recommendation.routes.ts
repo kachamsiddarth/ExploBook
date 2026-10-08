@@ -29,6 +29,7 @@ recommendationRouter.post('/', requireAuth, async (req, res, next) => {
       query: input.query,
       genre: input.genre,
       limit: input.limit,
+      excludeBookIds: input.excludeBookIds,
       readerProfile,
     });
 

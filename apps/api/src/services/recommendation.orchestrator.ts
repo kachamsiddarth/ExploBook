@@ -7,6 +7,7 @@ export interface GetRecommendationsOptions {
   query?: string;
   genre?: string;
   limit?: number;
+  excludeBookIds?: string[];
   readerProfile?: Partial<ReaderProfile>;
 }
 
@@ -47,6 +48,7 @@ export class RecommendationOrchestrator {
           const vectorSearchResult = await bookRepository.vectorSearch(embeddingResult.embedding, {
             limit,
             filter,
+            excludeBookIds: options.excludeBookIds,
           });
 
           if (vectorSearchResult.results.length > 0) {
@@ -67,6 +69,7 @@ export class RecommendationOrchestrator {
           genre: options.genre,
           q: queryText,
           limit,
+          excludeBookIds: options.excludeBookIds,
         });
 
         candidateScored = books.map((b) => ({ book: b, score: 0.8 }));

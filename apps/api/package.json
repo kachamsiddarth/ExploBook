@@ -17,6 +17,7 @@
     "@elevenlabs/elevenlabs-js": "^2.71.0",
     "@explobook/shared": "workspace:*",
     "@mastra/core": "^1.74.0",
+    "@sentry/node": "^11.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

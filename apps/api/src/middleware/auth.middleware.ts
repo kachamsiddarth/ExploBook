@@ -18,12 +18,15 @@ declare global {
   }
 }
 
-// Clerk middleware wrapper that is safe when Clerk keys are not yet configured (e.g. In unit tests)
+// Clerk middleware wrapper that is safe when Clerk keys are not yet configured (e.g. in unit tests)
 export const clerkAuthMiddleware = () => {
   if (!config.clerk?.secretKey) {
     return (_req: Request, _res: Response, next: NextFunction) => next();
   }
-  return clerkExpressMiddleware();
+  return clerkExpressMiddleware({
+    publishableKey: config.clerk?.publishableKey,
+    secretKey: config.clerk?.secretKey,
+  });
 };
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -72,6 +75,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       user,
       readerProfile,
     };
+    (req as any).user = user;
 
     next();
   } catch (err: any) {

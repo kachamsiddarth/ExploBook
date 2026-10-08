@@ -16,10 +16,12 @@ export interface GroundedReasoningResult {
 export class GemmaService {
   private baseUrl: string;
   private model: string;
+  private timeoutMs: number;
 
-  constructor() {
-    this.baseUrl = config.ollama?.baseUrl || 'http://127.0.0.1:11434';
-    this.model = config.ollama?.gemmaModel || 'gemma3:4b-it-q4_K_M';
+  constructor(options?: { baseUrl?: string; model?: string; timeoutMs?: number }) {
+    this.baseUrl = options?.baseUrl || config.ollama?.baseUrl || 'http://127.0.0.1:11434';
+    this.model = options?.model || config.ollama?.gemmaModel || 'gemma3:4b-it-q4_K_M';
+    this.timeoutMs = options?.timeoutMs ?? (config.ollama?.timeoutMs || 30000);
   }
 
   /**
@@ -37,7 +39,7 @@ export class GemmaService {
       const response = await fetch(`${this.baseUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(this.timeoutMs),
         body: JSON.stringify({
           model: this.model,
           prompt,

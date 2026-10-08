@@ -34,6 +34,7 @@ export interface BookFilterOptions {
   maxPages?: number;
   skip?: number;
   limit?: number;
+  excludeBookIds?: string[];
 }
 
 export class BookRepository {
@@ -53,6 +54,15 @@ export class BookRepository {
   async find(options: BookFilterOptions = {}): Promise<{ books: BookDoc[]; total: number }> {
     const collection = await this.getCollection();
     const query: Filter<BookDoc> = {};
+
+    if (options.excludeBookIds && options.excludeBookIds.length > 0) {
+      const validObjIds = options.excludeBookIds
+        .filter((id) => ObjectId.isValid(id))
+        .map((id) => new ObjectId(id));
+      if (validObjIds.length > 0) {
+        query._id = { $nin: validObjIds };
+      }
+    }
 
     if (options.genre) {
       query.genres = { $in: [new RegExp(options.genre, 'i')] };
@@ -146,27 +156,44 @@ export class BookRepository {
    */
   async vectorSearch(
     queryVector: number[],
-    options: { limit?: number; minScore?: number; filter?: Filter<BookDoc> } = {}
+    options: {
+      limit?: number;
+      minScore?: number;
+      filter?: Filter<BookDoc>;
+      excludeBookIds?: string[];
+    } = {}
   ): Promise<{ results: Array<{ book: BookDoc; score: number }>; method: 'atlas_vector_search' | 'in_memory_cosine_fallback' }> {
     const collection = await this.getCollection();
     const limit = options.limit ?? 5;
+    const excludedObjIds = (options.excludeBookIds || [])
+      .filter((id) => ObjectId.isValid(id))
+      .map((id) => new ObjectId(id));
 
     try {
       const vectorSearchStage: Record<string, unknown> = {
         index: 'vector_index',
         path: 'embedding',
         queryVector,
-        numCandidates: limit * 10,
-        limit,
+        numCandidates: (limit + excludedObjIds.length) * 10,
+        limit: limit + excludedObjIds.length,
       };
 
       if (options.filter && Object.keys(options.filter).length > 0) {
         vectorSearchStage.filter = options.filter;
       }
 
+      const matchStage: Record<string, unknown> = {};
+      if (excludedObjIds.length > 0) {
+        matchStage._id = { $nin: excludedObjIds };
+      }
+
       const pipeline: Record<string, unknown>[] = [
         {
           $vectorSearch: vectorSearchStage,
+        },
+        ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
+        {
+          $limit: limit,
         },
         {
           $project: {
@@ -206,11 +233,16 @@ export class BookRepository {
     }
 
     // In-memory cosine fallback (isolated for dev/offline/test scenarios)
+    const fallbackFilter: Filter<BookDoc> = {
+      embedding: { $exists: true, $ne: [] },
+      ...(options.filter || {}),
+    };
+    if (excludedObjIds.length > 0) {
+      fallbackFilter._id = { $nin: excludedObjIds };
+    }
+
     const embeddedBooks = await collection
-      .find({
-        embedding: { $exists: true, $ne: [] },
-        ...(options.filter || {}),
-      })
+      .find(fallbackFilter)
       .limit(100)
       .toArray();
 

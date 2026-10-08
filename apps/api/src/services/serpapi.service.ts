@@ -50,8 +50,8 @@ export interface NearbyPlaceCandidate extends ExpeditionPlace {
 export class SerpApiService {
   private apiKey: string | undefined;
 
-  constructor() {
-    this.apiKey = config.serpapi?.apiKey;
+  constructor(apiKey?: string | null) {
+    this.apiKey = apiKey === undefined ? config.serpapi?.apiKey : (apiKey || undefined);
   }
 
   /**

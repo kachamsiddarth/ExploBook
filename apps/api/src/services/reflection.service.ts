@@ -12,9 +12,12 @@ export class ReflectionService {
   private baseUrl: string;
   private model: string;
 
-  constructor() {
-    this.baseUrl = config.ollama?.baseUrl || 'http://127.0.0.1:11434';
-    this.model = config.ollama?.gemmaModel || 'gemma3:4b-it-q4_K_M';
+  private timeoutMs: number;
+
+  constructor(options?: { baseUrl?: string; model?: string; timeoutMs?: number }) {
+    this.baseUrl = options?.baseUrl || config.ollama?.baseUrl || 'http://127.0.0.1:11434';
+    this.model = options?.model || config.ollama?.gemmaModel || 'gemma3:4b-it-q4_K_M';
+    this.timeoutMs = options?.timeoutMs ?? (config.ollama?.timeoutMs || 30000);
   }
 
   /**
@@ -32,7 +35,7 @@ export class ReflectionService {
       const response = await fetch(`${this.baseUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(this.timeoutMs),
         body: JSON.stringify({
           model: this.model,
           prompt,

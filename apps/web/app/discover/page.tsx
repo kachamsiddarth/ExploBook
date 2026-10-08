@@ -57,11 +57,12 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingVoice, setIsLoadingVoice] = useState(false);
 
-  // Forms
   const [pagesRead, setPagesRead] = useState<number>(0);
   const [reflectionText, setReflectionText] = useState('');
   const [quoteText, setQuoteText] = useState('');
-  const [moodRating, setMoodRating] = useState<number>(3);
+  const [learnedWord, setLearnedWord] = useState('');
+  const [wouldRecommend, setWouldRecommend] = useState<boolean>(true);
+  const [moodRating, setMoodRating] = useState<number>(4);
 
   const [expNotes, setExpNotes] = useState('');
   const [expObservations, setExpObservations] = useState('');
@@ -241,11 +242,15 @@ export default function DiscoverPage() {
         ? Math.floor((Date.now() - sessionStartRef.current.getTime()) / 1000)
         : undefined;
 
+      const takeawaysWithWord = learnedWord?.trim()
+        ? `${reflectionText}\n\n[Word Discovered]: ${learnedWord.trim()}`
+        : reflectionText;
+
       await api.completeSession(activeSession.id, {
         pagesRead: pagesRead || undefined,
         durationSeconds,
         reflection: {
-          takeaways: reflectionText,
+          takeaways: takeawaysWithWord,
           quoteOrPassage: quoteText || undefined,
           moodRating,
         },
@@ -263,9 +268,23 @@ export default function DiscoverPage() {
     if (!currentBook) return;
     setLoading(true);
     setLoadingText('Generating real-world expedition from book themes...');
+
+    let coords = userLocation;
+    if (!coords && typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 180000 });
+        });
+        coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        setUserLocation(coords);
+      } catch {
+        // Location denied or timed out; falls back to generic nature/park prompt cleanly
+      }
+    }
+
     try {
-      const locationData = userLocation
-        ? { latitude: userLocation.latitude, longitude: userLocation.longitude, label: 'Nearby' }
+      const locationData = coords
+        ? { latitude: coords.latitude, longitude: coords.longitude, label: 'Current Location' }
         : undefined;
 
       const exp = await api.generateExpedition({
@@ -560,6 +579,47 @@ export default function DiscoverPage() {
               {currentBook.description}
             </p>
 
+            {/* Gemma Grounding Context */}
+            {recommendation?.reasoning && (
+              <div className="p-5 border-l-2 border-[#B6A46A] bg-[#F3EED7]/70 rounded-r-lg space-y-2">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#777164]">
+                  Gemma Grounding Rationale
+                </span>
+                <p className="text-xs font-serif text-[#292728] leading-relaxed">
+                  {recommendation.reasoning.explanation}
+                </p>
+                {recommendation.reasoning.touchGrassReason && (
+                  <p className="text-xs font-serif text-[#4a7c59] pt-1">
+                    🌿 {recommendation.reasoning.touchGrassReason}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Themes & External Acquisition */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex flex-wrap gap-2">
+                {currentBook.themes?.map((t) => (
+                  <span
+                    key={t}
+                    className="px-2 py-0.5 text-[11px] font-mono text-[#777164] bg-[#E9E2C7]/50 rounded"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
+
+              {/* Verified External Library / Open Book Search */}
+              <a
+                href={`https://openlibrary.org/search?q=${encodeURIComponent(currentBook.title + ' ' + (currentBook.authors?.[0] || ''))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-[#777164] hover:text-[#292728] hover:underline"
+              >
+                Find via Open Library ↗
+              </a>
+            </div>
+
             <button
               onClick={handleStartReading}
               disabled={loading}
@@ -648,13 +708,13 @@ export default function DiscoverPage() {
                   htmlFor="reflection-notes"
                   className="block text-xs font-mono uppercase text-[#777164] mb-1"
                 >
-                  Key Takeaways *
+                  What stayed with you? What was the author trying to communicate? *
                 </label>
                 <textarea
                   id="reflection-notes"
                   value={reflectionText}
                   onChange={(e) => setReflectionText(e.target.value)}
-                  placeholder="What idea made you pause? What landscape did it evoke?"
+                  placeholder="Describe what resonated, which idea made you pause, or what character/setting you understood most..."
                   rows={4}
                   className="w-full p-3 text-sm rounded border border-[#B6A46A]/40 bg-[#FFFDF5] font-serif"
                 />
@@ -671,10 +731,81 @@ export default function DiscoverPage() {
                   id="quote-input"
                   value={quoteText}
                   onChange={(e) => setQuoteText(e.target.value)}
-                  placeholder="A phrase that stayed with you..."
+                  placeholder="A phrase or line that stayed with you..."
                   rows={2}
                   className="w-full p-3 text-sm rounded border border-[#B6A46A]/40 bg-[#FFFDF5] font-serif"
                 />
+              </div>
+
+              {/* Vocabulary / Word Discovery */}
+              <div>
+                <label
+                  htmlFor="word-input"
+                  className="block text-xs font-mono uppercase text-[#777164] mb-1"
+                >
+                  What new or striking word did you discover? (optional)
+                </label>
+                <input
+                  id="word-input"
+                  type="text"
+                  value={learnedWord}
+                  onChange={(e) => setLearnedWord(e.target.value)}
+                  placeholder="e.g. petrichor, diaphanous, solipsism"
+                  className="w-full p-2.5 text-sm rounded border border-[#B6A46A]/40 bg-[#FFFDF5] font-serif"
+                />
+              </div>
+
+              {/* Rating & Recommendation */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[#777164] mb-1">
+                    Reading Experience Rating: {moodRating}/5
+                  </label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setMoodRating(star)}
+                        className={`text-xl transition-transform hover:scale-110 ${
+                          star <= moodRating ? 'text-[#B6A46A]' : 'text-[#E9E2C7]'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[#777164] mb-1">
+                    Would you read another like this?
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWouldRecommend(true)}
+                      className={`px-3 py-1.5 rounded text-xs font-mono border transition-all ${
+                        wouldRecommend
+                          ? 'border-[#292728] bg-[#292728] text-[#F3EED7]'
+                          : 'border-[#B6A46A]/40 bg-[#FFFDF5] text-[#777164]'
+                      }`}
+                    >
+                      Yes, absolutely
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWouldRecommend(false)}
+                      className={`px-3 py-1.5 rounded text-xs font-mono border transition-all ${
+                        !wouldRecommend
+                          ? 'border-[#292728] bg-[#292728] text-[#F3EED7]'
+                          : 'border-[#B6A46A]/40 bg-[#FFFDF5] text-[#777164]'
+                      }`}
+                    >
+                      Explore different themes
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -724,6 +855,38 @@ export default function DiscoverPage() {
                     <li key={i}>{ins}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Verified Place Discovery via SerpApi */}
+            {currentExpedition.place && (
+              <div className="p-4 border border-[#B6A46A]/30 bg-[#F3EED7]/70 rounded-lg space-y-1">
+                <div className="flex items-center justify-between text-xs font-mono text-[#777164]">
+                  <span className="uppercase text-[#4a7c59]">📍 Suggested Exploration Site</span>
+                  {currentExpedition.place.rating && (
+                    <span>★ {currentExpedition.place.rating.toFixed(1)}</span>
+                  )}
+                </div>
+                <h4 className="font-serif font-bold text-base text-[#292728]">
+                  {currentExpedition.place.name}
+                </h4>
+                {currentExpedition.place.address && (
+                  <p className="text-xs text-[#524E48] font-serif">
+                    {currentExpedition.place.address}
+                  </p>
+                )}
+                {currentExpedition.place.mapsUrl && (
+                  <div className="pt-1">
+                    <a
+                      href={currentExpedition.place.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono text-[#4a7c59] hover:underline inline-block"
+                    >
+                      Directions / Open in Maps →
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 

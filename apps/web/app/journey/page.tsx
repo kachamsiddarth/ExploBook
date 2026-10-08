@@ -178,12 +178,28 @@ export default function JourneyPage() {
                     {data.currentExpedition.objective}
                   </p>
                   <div className="pt-2">
-                    <Link
-                      href="/discover"
-                      className="inline-flex items-center px-6 py-2.5 rounded bg-[#4a7c59] text-white font-mono text-xs uppercase tracking-wider hover:bg-[#3d6849] transition-colors"
-                    >
-                      Step Outside Now →
-                    </Link>
+                    {data.currentExpedition.status === 'AWAY' ? (
+                      <Link
+                        href="/discover"
+                        className="inline-flex items-center px-6 py-2.5 rounded bg-[#292728] text-[#F3EED7] font-mono text-xs uppercase tracking-wider hover:bg-[#3D3A3B] transition-colors"
+                      >
+                        Return from Expedition →
+                      </Link>
+                    ) : data.currentExpedition.status === 'REFLECTION_PENDING' ? (
+                      <Link
+                        href="/discover"
+                        className="inline-flex items-center px-6 py-2.5 rounded bg-[#4a7c59] text-white font-mono text-xs uppercase tracking-wider hover:bg-[#3d6849] transition-colors"
+                      >
+                        Complete Field Reflection →
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/discover"
+                        className="inline-flex items-center px-6 py-2.5 rounded bg-[#4a7c59] text-white font-mono text-xs uppercase tracking-wider hover:bg-[#3d6849] transition-colors"
+                      >
+                        Start Expedition (Touch Grass) →
+                      </Link>
+                    )}
                   </div>
                 </div>
               ) : (

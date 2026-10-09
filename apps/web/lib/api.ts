@@ -330,6 +330,24 @@ export async function getRecommendation(opts?: {
   return res.success ? (res.data ?? null) : null;
 }
 
+export async function getPublicRecommendation(opts?: {
+  query?: string;
+  genre?: string;
+}): Promise<{ recommendations: Recommendation[]; retrievalMethod: string; gemmaStatus?: string } | null> {
+  const params = new URLSearchParams({
+    q: opts?.query ?? 'discover something new',
+    limit: '1',
+  });
+  if (opts?.genre) {
+    params.set('genre', opts.genre);
+  }
+
+  const res = await apiFetch<{ recommendations: Recommendation[]; retrievalMethod: string; gemmaStatus?: string }>(
+    `/api/v1/recommendations/public?${params.toString()}`
+  );
+  return res.success ? (res.data ?? null) : null;
+}
+
 // ─── Sessions ────────────────────────────────────────────────────────────────
 
 export async function startSession(bookId: string): Promise<{ session: ReadingSession; resumed: boolean } | null> {

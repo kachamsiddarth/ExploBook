@@ -19,14 +19,24 @@ const dashboardRouter = Router();
  */
 dashboardRouter.get('/', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const userId = req.authContext?.user._id;
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Valid Clerk authentication token is required.',
+        },
+      });
+      return;
+    }
 
     // Fetch all needed data in parallel
     const [profile, activeSession, currentExpedition, orbs] = await Promise.all([
-      readerProfileRepository.findByUserId(user._id),
-      readingSessionRepository.findActiveByUserId(user._id),
-      expeditionRepository.findCurrentByUserId(user._id),
-      orbRepository.findByUserId(user._id),
+      readerProfileRepository.findByUserId(userId),
+      readingSessionRepository.findActiveByUserId(userId),
+      expeditionRepository.findCurrentByUserId(userId),
+      orbRepository.findByUserId(userId),
     ]);
 
     const stats = profile?.stats ?? {

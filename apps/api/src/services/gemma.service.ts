@@ -69,7 +69,15 @@ export class GemmaService {
         };
       }
 
-      const parsed = this.parseResponse(rawText, book);
+      const parsed = this.parseResponse(rawText);
+      if (!parsed) {
+        console.warn('[GemmaService]: Ollama returned malformed recommendation reasoning. Using dev fallback.');
+        return {
+          reasoning: this.fallbackReasoning(book),
+          status: 'fallback_offline',
+        };
+      }
+
       return {
         reasoning: parsed,
         status: 'gemma_grounded',
@@ -119,25 +127,36 @@ Output valid JSON ONLY in exactly this schema:
 Respond ONLY with the JSON object. Do not wrap in markdown or commentary.`;
   }
 
-  private parseResponse(raw: string, book: BookDoc): RecommendationReasoning {
+  private parseResponse(raw: string): RecommendationReasoning | null {
     try {
       const jsonStart = raw.indexOf('{');
       const jsonEnd = raw.lastIndexOf('}');
       if (jsonStart !== -1 && jsonEnd !== -1) {
         const jsonStr = raw.substring(jsonStart, jsonEnd + 1);
-        const parsed = JSON.parse(jsonStr) as Record<string, string>;
-        if (parsed.explanation && parsed.touchGrassReason) {
-          return {
-            explanation: parsed.explanation,
-            touchGrassReason: parsed.touchGrassReason,
-            suggestedAtmosphere: parsed.suggestedAtmosphere || 'A quiet natural bench or outdoor shaded park.',
-          };
+        const parsed: unknown = JSON.parse(jsonStr);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const response = parsed as Record<string, unknown>;
+          if (
+            typeof response.explanation === 'string' &&
+            response.explanation.trim().length > 0 &&
+            typeof response.touchGrassReason === 'string' &&
+            response.touchGrassReason.trim().length > 0
+          ) {
+            return {
+              explanation: response.explanation.trim(),
+              touchGrassReason: response.touchGrassReason.trim(),
+              suggestedAtmosphere:
+                typeof response.suggestedAtmosphere === 'string' && response.suggestedAtmosphere.trim()
+                  ? response.suggestedAtmosphere.trim()
+                  : 'A quiet natural bench or outdoor shaded park.',
+            };
+          }
         }
       }
     } catch {
-      // JSON parse error, fall through to fallback
+      return null;
     }
-    return this.fallbackReasoning(book);
+    return null;
   }
 
   private fallbackReasoning(book: BookDoc): RecommendationReasoning {

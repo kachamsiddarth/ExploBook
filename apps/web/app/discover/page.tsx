@@ -185,10 +185,13 @@ export default function DiscoverPage() {
 
     try {
       const activeDash = customDash !== undefined ? customDash : dashboard;
-      const res = await api.getRecommendation({
-        query: buildDNAQuery(activeDash?.profile?.dna),
-        excludeBookIds: nextExclusions.length > 0 ? nextExclusions : undefined,
-      });
+      const query = buildDNAQuery(activeDash?.profile?.dna);
+      const res = isSignedIn
+        ? await api.getRecommendation({
+            query,
+            excludeBookIds: nextExclusions.length > 0 ? nextExclusions : undefined,
+          })
+        : await api.getPublicRecommendation({ query });
 
       if (res && res.recommendations && res.recommendations.length > 0) {
         setRecommendation(res.recommendations[0]);
